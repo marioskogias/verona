@@ -141,6 +141,12 @@ namespace verona::rt
       return local;
     }
 
+    static std::vector<int>& initial_fds()
+    {
+      static thread_local std::vector<int> initial_fds;
+      return initial_fds;
+    }
+
 #ifdef USE_SYSTEMATIC_TESTING
     void choose_thread()
     {

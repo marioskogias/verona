@@ -13,6 +13,7 @@
 
 #include <snmalloc.h>
 #include <thread>
+#include <sys/epoll.h>
 
 namespace verona::rt
 {
@@ -102,6 +103,8 @@ namespace verona::rt
     ObjectMap<std::pair<T*, ObjectMap<T*>*>> mute_map;
     typename T::MessageBody* message_body = nullptr;
     T* mutor = nullptr;
+
+    int efd;
 
     T* get_token_cown()
     {
@@ -316,6 +319,24 @@ namespace verona::rt
         mute_map.clear(alloc);
     }
 
+    void open_efd(void)
+    {
+      efd = epoll_create1(0);
+      assert(efd>0);
+    }
+
+    void register_initial_fds()
+    {
+			int ret;
+			struct epoll_event ev;
+
+			ev.events = EPOLLIN;
+			ev.data.u32 = 0;
+			for (const auto& sock: Scheduler::initial_fds()) {
+				ret = epoll_ctl(efd, EPOLL_CTL_ADD, sock, &ev);
+				assert(!ret);
+			}
+    }
     /**
      * Startup is supplied to initialise thread local state before the runtime
      * starts.
@@ -337,6 +358,10 @@ namespace verona::rt
       alloc = ThreadAlloc::get();
       victim = next;
       T* cown = nullptr;
+      open_efd();
+
+      // Check if startup already provided some fds to include in the efd
+      register_initial_fds();
 
 #ifdef USE_SYSTEMATIC_TESTING
       Scheduler::wait_for_my_first_turn();
