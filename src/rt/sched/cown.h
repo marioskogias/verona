@@ -61,6 +61,7 @@ namespace verona::rt
         set_epoch(epoch);
         queue.init(stub_msg(alloc));
         CownThread* local = Scheduler::local();
+        io_blocked = false;
 
         if (local != nullptr)
         {
@@ -115,6 +116,8 @@ namespace verona::rt
 
     std::atomic<Status> status{};
     std::atomic<uintptr_t> bp_state{(Cown*)nullptr | Priority::Normal};
+
+    uint8_t io_blocked;
 
     static Cown* create_token_cown()
     {
@@ -813,6 +816,11 @@ namespace verona::rt
       // Try to acquire as many cowns as possible without rescheduling,
       // starting from the beginning.
       fast_send(body, epoch);
+    }
+
+    inline void will_block_in_io(void)
+    {
+      io_blocked = true;
     }
 
     /// Transition a cown between backpressure states. Return the previous
