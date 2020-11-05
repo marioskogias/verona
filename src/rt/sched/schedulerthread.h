@@ -15,6 +15,8 @@
 #include <thread>
 #include <sys/epoll.h>
 
+#define MAX_EVENTS 64
+
 namespace verona::rt
 {
   /**
@@ -152,6 +154,7 @@ namespace verona::rt
         Systematic::cout() << "Enqueue unscanned cown " << a << std::endl;
         scheduled_unscanned_cown = true;
       }
+
       assert(!a->queue.is_sleeping());
       q.enqueue(alloc, a);
 
@@ -336,11 +339,24 @@ namespace verona::rt
 			ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
       assert(!ret);
       std::cout << "Just registered fd" << std::endl;
+
+      active_fds++;
     }
 
     void check_io()
     {
+      int nfds, i;
+      struct epoll_event events[MAX_EVENTS];
+      T *cown;
 
+      nfds = epoll_wait(efd, events, MAX_EVENTS, 0);
+
+      for (i = 0; i < nfds; i++) {
+        assert(events[i].data.ptr);
+        cown = static_cast<T *>(events[i].data.ptr);
+        cown->io_blocked = false;
+        cown->schedule();
+      }
     }
 
     /**

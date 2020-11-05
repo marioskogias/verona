@@ -1157,6 +1157,9 @@ namespace verona::rt
 
         alloc->dealloc(senders, senders_count * sizeof(Cown*));
 
+        if (io_blocked)
+          return false;
+
       } while ((curr != until) && (batch_size < batch_limit));
 
       return true;
