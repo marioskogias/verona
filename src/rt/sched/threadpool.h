@@ -141,10 +141,9 @@ namespace verona::rt
       return local;
     }
 
-    static std::vector<int>& initial_fds()
+    static void register_io_fd(int fd, void *ptr, uint32_t events)
     {
-      static thread_local std::vector<int> initial_fds;
-      return initial_fds;
+      local()->register_fd(fd, ptr, events);
     }
 
 #ifdef USE_SYSTEMATIC_TESTING

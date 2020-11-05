@@ -105,6 +105,7 @@ namespace verona::rt
     T* mutor = nullptr;
 
     int efd;
+    int active_fds=0;
 
     T* get_token_cown()
     {
@@ -325,18 +326,23 @@ namespace verona::rt
       assert(efd>0);
     }
 
-    void register_initial_fds()
+    void register_fd(int fd, void *cown, uint32_t events)
     {
 			int ret;
 			struct epoll_event ev;
 
-			ev.events = EPOLLIN;
-			ev.data.u32 = 0;
-			for (const auto& sock: Scheduler::initial_fds()) {
-				ret = epoll_ctl(efd, EPOLL_CTL_ADD, sock, &ev);
-				assert(!ret);
-			}
+			ev.events = events;
+			ev.data.ptr = cown;
+			ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
+      assert(!ret);
+      std::cout << "Just registered fd" << std::endl;
     }
+
+    void check_io()
+    {
+
+    }
+
     /**
      * Startup is supplied to initialise thread local state before the runtime
      * starts.
@@ -346,7 +352,6 @@ namespace verona::rt
     template<typename... Args>
     void run(void (*startup)(Args...), Args... args)
     {
-      startup(args...);
       // Don't use affinity with systematic testing.  We're only ever running
       // one thread at a time in systematic testing mode and by pinning each
       // thread to a core we massively increase contention.
@@ -358,10 +363,11 @@ namespace verona::rt
       alloc = ThreadAlloc::get();
       victim = next;
       T* cown = nullptr;
+
+      // Call first before startup might create fds to add
       open_efd();
 
-      // Check if startup already provided some fds to include in the efd
-      register_initial_fds();
+      startup(args...); // does it matter moving this later?
 
 #ifdef USE_SYSTEMATIC_TESTING
       Scheduler::wait_for_my_first_turn();
@@ -369,6 +375,9 @@ namespace verona::rt
 
       while (true)
       {
+        // Check the network
+        check_io();
+
         if (
           (total_cowns < (free_cowns << 1))
 #ifdef USE_SYSTEMATIC_TESTING
@@ -403,7 +412,10 @@ namespace verona::rt
 
           // If we can't steal, we are done.
           if (cown == nullptr)
-            break;
+            if (active_fds > 0)
+              continue;
+            else
+              break;
         }
 
         // Administrative work before handling messages.
