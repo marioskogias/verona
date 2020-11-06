@@ -15,7 +15,9 @@
 #include <thread>
 #include <sys/epoll.h>
 
+#ifndef ASIO
 #define MAX_EVENTS 64
+#endif
 
 namespace verona::rt
 {
@@ -107,7 +109,9 @@ namespace verona::rt
     T* mutor = nullptr;
 
     int efd;
+#ifndef ASIO
     int active_fds=0;
+#endif
 
     T* get_token_cown()
     {
@@ -331,6 +335,9 @@ namespace verona::rt
 
     void register_fd(int fd, void *cown, uint32_t events)
     {
+#ifdef ASIO
+      Scheduler::get().io_thread->register_fd(fd, cown, events);
+#else
 			int ret;
 			struct epoll_event ev;
 
@@ -341,6 +348,7 @@ namespace verona::rt
       std::cout << "Just registered fd" << std::endl;
 
       active_fds++;
+#endif
     }
 
     void check_io()
@@ -380,8 +388,10 @@ namespace verona::rt
       victim = next;
       T* cown = nullptr;
 
+#ifndef ASIO
       // Call first before startup might create fds to add
       open_efd();
+#endif
 
       startup(args...); // does it matter moving this later?
 
@@ -389,10 +399,16 @@ namespace verona::rt
       Scheduler::wait_for_my_first_turn();
 #endif
 
+#ifdef ASIO
+      assert(Scheduler::get().io_thread);
+#endif
+
       while (true)
       {
+#ifndef ASIO
         // Check the network
         check_io();
+#endif
 
         if (
           (total_cowns < (free_cowns << 1))
@@ -428,8 +444,13 @@ namespace verona::rt
 
           // If we can't steal, we are done.
           if (cown == nullptr)
+#ifdef ASIO
+            if (Scheduler::get().io_thread->active_fds_count() > 0)
+              continue;
+#else
             if (active_fds > 0)
               continue;
+#endif
             else
               break;
         }

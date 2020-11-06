@@ -5,6 +5,9 @@
 #include "cpu.h"
 #include "test/systematic.h"
 #include "threadstate.h"
+#ifdef ASIO
+#include "asio.h"
+#endif
 
 #include <condition_variable>
 #include <mutex>
@@ -58,6 +61,10 @@ namespace verona::rt
 
     ThreadState state;
     Topology topology;
+
+#ifdef ASIO
+    IOThread *io_thread;
+#endif
 
   public:
     static ThreadPool<T>& get()
@@ -145,6 +152,13 @@ namespace verona::rt
     {
       local()->register_fd(fd, ptr, events);
     }
+
+#ifdef ASIO
+    void register_io_thread(IOThread *t)
+    {
+      get().io_thread = t;
+    }
+#endif
 
 #ifdef USE_SYSTEMATIC_TESTING
     void choose_thread()

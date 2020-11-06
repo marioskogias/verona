@@ -82,6 +82,7 @@ namespace verona::rt
     friend class DLList<Cown>;
     friend class MultiMessage;
     friend CownThread;
+    friend class IOThread;
 
     template<typename T>
     friend class Noticeboard;

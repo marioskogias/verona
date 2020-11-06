@@ -21,5 +21,8 @@
 #include "sched/schedulerthread.h"
 #include "sched/spmcq.h"
 #include "test/systematic.h"
+#ifdef ASIO
+#include "sched/asio.h"
+#endif
 
 #include <snmalloc.h>
