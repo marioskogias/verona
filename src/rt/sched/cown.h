@@ -745,6 +745,9 @@ namespace verona::rt
       alloc->dealloc(body.behaviour, body.behaviour->size());
       alloc->dealloc<sizeof(MultiMessage::MultiMessageBody)>(m->get_body());
 
+      if (cown->io_blocked)
+        return false;
+
       return true;
     }
 
@@ -1156,10 +1159,6 @@ namespace verona::rt
           senders[s]->schedule();
 
         alloc->dealloc(senders, senders_count * sizeof(Cown*));
-
-        if (io_blocked)
-          return false;
-
       } while ((curr != until) && (batch_size < batch_limit));
 
       return true;
