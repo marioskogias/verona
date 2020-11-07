@@ -89,22 +89,21 @@ namespace ubench
 
       pinger->count++;
 
-      size_t cowns = 1;
+      recipients[0] = pinger;
       recipients[1] = pinger;
-      recipients[0] =
-        pinger->pingers[pinger->rng.next() % pinger->pingers.size()];
-
-      if ((pinger->pingers.size() > 1) && (pinger->select_mod != 0))
+      const bool multimessage = (pinger->pingers.size() > 1) &&
+        (pinger->select_mod != 0) &&
+        ((pinger->rng.next() % pinger->select_mod) == 0);
+      if (multimessage)
       {
         while (recipients[0] == pinger)
         {
           recipients[0] =
             pinger->pingers[pinger->rng.next() % pinger->pingers.size()];
         }
-        if ((pinger->rng.next() % pinger->select_mod) == 0)
-          cowns = 2;
       }
 
+      const size_t cowns = (multimessage ? 2 : 1);
       rt::Cown::schedule<Ping>(
         cowns, (rt::Cown**)recipients.data(), recipients[0]);
     }
@@ -215,7 +214,7 @@ namespace ubench
       for (auto* p : monitor->pingers)
         sum += p->count;
 
-      uint64_t rate = (sum * 1'000'000'000) / t;
+      double rate = ((double)sum * 1'000'000'000) / t;
       logger::cout() << t << " ns, " << rate << " msgs/s" << std::endl;
     }
   };
@@ -236,8 +235,9 @@ int main(int argc, char** argv)
   const auto percent_multimessage = opt.is<size_t>("--percent_multimessage", 5);
   check(percent_multimessage <= 100);
 
-  logger::cout() << "cores: " << cores << ", pingers: " << pingers
+  logger::cout() << "cores: " << cores
                  << ", report_interval: " << report_interval.count()
+                 << ", pingers: " << pingers
                  << ", initial_pings: " << initial_pings
                  << ", percent_mutlimessage: " << percent_multimessage
                  << std::endl;
