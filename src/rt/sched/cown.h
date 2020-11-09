@@ -61,7 +61,6 @@ namespace verona::rt
         set_epoch(epoch);
         queue.init(stub_msg(alloc));
         CownThread* local = Scheduler::local();
-        io_blocked = false;
 
         if (local != nullptr)
         {
@@ -118,7 +117,8 @@ namespace verona::rt
     std::atomic<Status> status{};
     std::atomic<uintptr_t> bp_state{(Cown*)nullptr | Priority::Normal};
 
-    uint8_t io_blocked;
+    uint8_t io_blocked = false;
+    uint8_t is_scheduled = false;
 
     static Cown* create_token_cown()
     {
@@ -409,6 +409,7 @@ namespace verona::rt
       // This should only be called if the cown is known to have been
       // unscheduled, for example when detecting a previously empty message
       // queue on send, or when rescheduling after a multi-message.
+      is_scheduled = true;
       CownThread* t = Scheduler::local();
 
       if (t != nullptr)

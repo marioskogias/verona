@@ -362,7 +362,7 @@ namespace verona::rt
       for (i = 0; i < nfds; i++) {
         assert(events[i].data.ptr);
         cown = static_cast<T *>(events[i].data.ptr);
-        if (cown->io_blocked) {
+        if (!cown->is_scheduled) {
           cown->io_blocked = false;
           cown->schedule();
         }
@@ -534,6 +534,7 @@ namespace verona::rt
         }
         else
         {
+          cown->is_scheduled = false;
           Systematic::cout() << "Unschedule cown " << cown << std::endl;
           // Don't reschedule.
           cown = nullptr;
