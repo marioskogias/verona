@@ -362,8 +362,10 @@ namespace verona::rt
       for (i = 0; i < nfds; i++) {
         assert(events[i].data.ptr);
         cown = static_cast<T *>(events[i].data.ptr);
-        cown->io_blocked = false;
-        cown->schedule();
+        if (cown->io_blocked) {
+          cown->io_blocked = false;
+          cown->schedule();
+        }
       }
     }
 
