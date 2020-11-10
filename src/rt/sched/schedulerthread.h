@@ -15,9 +15,7 @@
 #include <thread>
 #include <sys/epoll.h>
 
-#ifndef ASIO
 #define MAX_EVENTS 64
-#endif
 
 namespace verona::rt
 {
@@ -109,7 +107,7 @@ namespace verona::rt
     T* mutor = nullptr;
 
     int efd;
-#ifndef ASIO
+#ifdef STATICIO
     int active_fds=0;
 #endif
 
@@ -337,13 +335,14 @@ namespace verona::rt
     {
 #ifdef ASIO
       Scheduler::get().io_thread->register_fd(fd, cown, events);
-#else
-			int ret;
-			struct epoll_event ev;
+#endif
+#ifdef STATICIO
+      int ret;
+      struct epoll_event ev;
 
-			ev.events = events;
-			ev.data.ptr = cown;
-			ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
+      ev.events = events;
+      ev.data.ptr = cown;
+      ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
       assert(!ret);
       std::cout << "Just registered fd" << std::endl;
 
@@ -390,7 +389,7 @@ namespace verona::rt
       victim = next;
       T* cown = nullptr;
 
-#ifndef ASIO
+#ifdef STATICIO
       // Call first before startup might create fds to add
       open_efd();
 #endif
@@ -401,13 +400,9 @@ namespace verona::rt
       Scheduler::wait_for_my_first_turn();
 #endif
 
-#ifdef ASIO
-      assert(Scheduler::get().io_thread);
-#endif
-
       while (true)
       {
-#ifndef ASIO
+#ifdef STATICIO
         // Check the network
         check_io();
 #endif
@@ -449,11 +444,14 @@ namespace verona::rt
 #ifdef ASIO
             if (Scheduler::get().io_thread->active_fds_count() > 0)
               continue;
-#else
+            else
+#endif
+#ifdef STATICIO
             if (active_fds > 0)
               continue;
-#endif
             else
+#endif
+              // With floating IO you should always be able to steal
               break;
         }
 

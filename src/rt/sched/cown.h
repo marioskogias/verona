@@ -77,6 +77,9 @@ namespace verona::rt
       }
     }
 
+    uint8_t io_blocked = false;
+    uint8_t is_scheduled = false;
+
   private:
     friend class DLList<Cown>;
     friend class MultiMessage;
@@ -116,9 +119,6 @@ namespace verona::rt
 
     std::atomic<Status> status{};
     std::atomic<uintptr_t> bp_state{(Cown*)nullptr | Priority::Normal};
-
-    uint8_t io_blocked = false;
-    uint8_t is_scheduled = false;
 
     static Cown* create_token_cown()
     {
@@ -750,6 +750,11 @@ namespace verona::rt
     }
 
   public:
+    void exposed_schedule()
+    {
+      schedule();
+    }
+
     template<
       class Behaviour,
       TransferOwnership transfer = NoTransfer,

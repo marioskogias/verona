@@ -2,8 +2,6 @@
 
 #include <sys/epoll.h>
 
-#define MAX_EVENTS 64
-
 namespace verona::rt 
 {
   class IOThread
