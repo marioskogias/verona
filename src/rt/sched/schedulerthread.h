@@ -15,7 +15,7 @@
 #include <thread>
 #include <sys/epoll.h>
 
-#define MAX_EVENTS 64
+#define MAX_EVENTS 2048
 
 namespace verona::rt
 {
@@ -441,6 +441,7 @@ namespace verona::rt
 
           // If we can't steal, we are done.
           if (cown == nullptr)
+#if 0
 #ifdef ASIO
             if (Scheduler::get().io_thread->active_fds_count() > 0)
               continue;
@@ -451,8 +452,12 @@ namespace verona::rt
               continue;
             else
 #endif
-              // With floating IO you should always be able to steal
-              break;
+#ifdef FLOATINGIO
+            // With floating IO you should always be able to steal
+#endif
+#endif
+            continue;
+              //break;
         }
 
         // Administrative work before handling messages.
@@ -642,6 +647,10 @@ namespace verona::rt
         // Participate in the cown LD protocol.
         ld_protocol();
 
+	// Check network if STATICIO
+#ifdef STATICIO
+	check_io();
+#endif
         // Check if some other thread has pushed work on our queue.
         cown = q.dequeue(alloc);
 
@@ -665,6 +674,7 @@ namespace verona::rt
         // We were unable to steal, move to the next victim thread.
         victim = victim->next;
 
+#if 0
         // Wait until a minimum timeout has passed.
         uint64_t tsc2 = Aal::tick();
 
@@ -703,6 +713,7 @@ namespace verona::rt
         {
           yield();
         }
+#endif
 #endif
       }
 
