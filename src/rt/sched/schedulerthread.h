@@ -106,8 +106,8 @@ namespace verona::rt
     typename T::MessageBody* message_body = nullptr;
     T* mutor = nullptr;
 
-    int efd;
 #ifdef STATICIO
+    int efd;
     int active_fds=0;
 #endif
 
@@ -123,6 +123,8 @@ namespace verona::rt
       mute_map{ThreadAlloc::get()}
     {
       token_cown->set_owning_thread(this);
+#ifdef TOKENIO
+#endif
     }
 
     ~SchedulerThread()
@@ -325,32 +327,45 @@ namespace verona::rt
         mute_map.clear(alloc);
     }
 
+#ifdef STATICIO
     void open_efd(void)
     {
       efd = epoll_create1(0);
       assert(efd>0);
     }
+#endif
 
     void register_fd(int fd, void *cown, uint32_t events)
     {
 #ifdef ASIO
       Scheduler::get().io_thread->register_fd(fd, cown, events);
 #endif
-#ifdef STATICIO
+#if defined(STATICIO) || defined(TOKENIO)
       int ret;
       struct epoll_event ev;
 
       ev.events = events;
       ev.data.ptr = cown;
+#ifdef STATICIO
       ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
+#else
+      ret = epoll_ctl(token_cown->efd, EPOLL_CTL_ADD, fd, &ev);
+#endif
       assert(!ret);
       std::cout << "Just registered fd" << std::endl;
 
+#ifdef STATICIO
       active_fds++;
+#endif
 #endif
     }
 
+#ifdef STATICIO
     void check_io()
+#endif
+#ifdef TOKENIO
+    void check_io(int efd)
+#endif
     {
       int nfds, i;
       struct epoll_event events[MAX_EVENTS];
@@ -651,6 +666,10 @@ namespace verona::rt
 #ifdef STATICIO
 	check_io();
 #endif
+#ifdef TOKENIO
+	if (q.is_empty())
+		check_io(token_cown->efd);
+#endif
         // Check if some other thread has pushed work on our queue.
         cown = q.dequeue(alloc);
 
@@ -747,6 +766,9 @@ namespace verona::rt
         auto unmasked = clear_thread_bit(cown);
         SchedulerThread* sched = unmasked->owning_thread();
         assert(!sched->debug_is_token_consumed());
+#ifdef TOKENIO
+	check_io(cown->efd);
+#endif
         sched->set_token_consumed(true);
 
         if (sched != this)

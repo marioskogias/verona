@@ -109,6 +109,9 @@ namespace verona::rt
     // collect again when the weak reference count hits 0.
     std::atomic<uintptr_t> thread_status;
     Cown* next;
+#ifdef TOKENIO
+    int efd;
+#endif
 
     /**
      * Cown's weak reference count.  This keeps the cown itself alive, but not
@@ -130,6 +133,10 @@ namespace verona::rt
       auto a = new (o) Cown(false);
 
       a->cown_mark_scanned();
+#ifdef TOKENIO
+      a->efd = epoll_create1(0);
+      assert(a->efd>0);
+#endif
       return a;
     }
 
