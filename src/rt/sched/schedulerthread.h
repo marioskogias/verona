@@ -346,6 +346,7 @@ namespace verona::rt
 
       ev.events = events;
       ev.data.ptr = cown;
+      T::acquire((Object *)cown);
 #ifdef STATICIO
       ret = epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ev);
 #else
@@ -376,10 +377,11 @@ namespace verona::rt
       for (i = 0; i < nfds; i++) {
         assert(events[i].data.ptr);
         cown = static_cast<T *>(events[i].data.ptr);
-        if (!cown->is_scheduled) {
-          cown->io_blocked = false;
-          cown->schedule();
-        }
+        auto pref = true;
+	auto expected = false;
+        if (!cown->is_scheduled.compare_exchange_strong(expected, pref))
+          continue;
+        cown->schedule();
       }
     }
 
@@ -552,7 +554,7 @@ namespace verona::rt
         }
         else
         {
-          cown->is_scheduled = false;
+          cown->is_scheduled.store(false, std::memory_order_relaxed);
           Systematic::cout() << "Unschedule cown " << cown << std::endl;
           // Don't reschedule.
           cown = nullptr;
@@ -767,7 +769,7 @@ namespace verona::rt
         SchedulerThread* sched = unmasked->owning_thread();
         assert(!sched->debug_is_token_consumed());
 #ifdef TOKENIO
-	check_io(cown->efd);
+	check_io(unmasked->efd);
 #endif
         sched->set_token_consumed(true);
 

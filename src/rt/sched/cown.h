@@ -78,7 +78,7 @@ namespace verona::rt
     }
 
     uint8_t io_blocked = false;
-    uint8_t is_scheduled = false;
+    std::atomic<bool> is_scheduled = false;
 
   private:
     friend class DLList<Cown>;
@@ -416,7 +416,7 @@ namespace verona::rt
       // This should only be called if the cown is known to have been
       // unscheduled, for example when detecting a previously empty message
       // queue on send, or when rescheduling after a multi-message.
-      is_scheduled = true;
+      is_scheduled.store(true, std::memory_order_relaxed);
       CownThread* t = Scheduler::local();
 
       if (t != nullptr)
@@ -1138,14 +1138,15 @@ namespace verona::rt
             << "Cown " << this << " has no work this time" << std::endl;
 
           // Deschedule the cown.
+	  assert(0);
           Cown::release(alloc, this);
           return false;
         }
 
         assert(!queue.is_sleeping());
 
-        if (check_message_token(alloc, curr->get_body()))
-          return true;
+        //if (check_message_token(alloc, curr->get_body()))
+        //  return true;
 
         batch_size++;
 
@@ -1161,8 +1162,8 @@ namespace verona::rt
         if (!run_step(curr))
           return false;
 
-        if (apply_backpressure(senders, senders_count))
-          return false;
+        //if (apply_backpressure(senders, senders_count))
+        //  return false;
 
         // Reschedule the other cowns.
         for (size_t s = 0; s < (senders_count - 1); s++)
@@ -1170,8 +1171,10 @@ namespace verona::rt
 
         alloc->dealloc(senders, senders_count * sizeof(Cown*));
 
-        if (io_blocked)
+        if (io_blocked) {
+          io_blocked = false;
           return false;
+	}
       } while ((curr != until) && (batch_size < batch_limit));
 
       return true;
