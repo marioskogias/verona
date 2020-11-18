@@ -116,6 +116,11 @@ namespace verona::rt
     std::atomic<Status> status{};
     std::atomic<uintptr_t> bp_state{(Cown*)nullptr | Priority::Normal};
 
+    // IO fd is used only in the token cown
+    int io_fd;
+
+    bool would_io_block = false;
+
     static Cown* create_token_cown()
     {
       static constexpr Descriptor desc = {
@@ -397,6 +402,11 @@ namespace verona::rt
         schedule();
       }
       yield();
+    }
+
+    void would_block_in_io()
+    {
+      would_io_block = true;
     }
 
   protected:
