@@ -68,6 +68,7 @@ namespace verona::rt
 
       auto* alloc = rt::ThreadAlloc::get();
       auto sock_cown = new (alloc) TCPSock(sock);
+      Cown::acquire(sock_cown);
       Scheduler::local()->register_socket(sock, 0, (long)(void*)sock_cown);
 
       std::cout << "Created new server socket" << std::endl;
