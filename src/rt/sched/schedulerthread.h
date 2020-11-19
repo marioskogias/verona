@@ -395,7 +395,8 @@ namespace verona::rt
 
           // If we can't steal, we are done.
           if (cown == nullptr)
-            break;
+             continue;
+            //break;
         }
 
         // Administrative work before handling messages.
@@ -616,6 +617,7 @@ namespace verona::rt
         // We were unable to steal, move to the next victim thread.
         victim = victim->next;
 
+#if 0
         // Wait until a minimum timeout has passed.
         uint64_t tsc2 = Aal::tick();
 
@@ -654,6 +656,7 @@ namespace verona::rt
         {
           yield();
         }
+#endif
 #endif
       }
 
