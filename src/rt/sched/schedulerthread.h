@@ -568,6 +568,12 @@ namespace verona::rt
       return res == ACTIVE;
     }
 
+    bool debug_is_token_stolen()
+    {
+      auto res = token_state.load(std::memory_order_relaxed);
+      return res == STOLEN;
+    }
+
     void set_token_state(TokenState res)
     {
       yield();
@@ -692,7 +698,7 @@ namespace verona::rt
 
         unmasked->check_io();
 
-        assert(sched->debug_is_token_active());
+        assert(sched->debug_is_token_active() || sched->debug_is_token_stolen());
 
         if (sched != this)
         {
