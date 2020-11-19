@@ -130,10 +130,11 @@ namespace verona::rt
       struct epoll_event events[MAX_EVENTS];
       int nfds, i;
 
-      nfds = epoll_wait(efd, events, MAX_EVENTS, -1);
+      nfds = epoll_wait(efd, events, MAX_EVENTS, 0);
       for (i = 0; i < nfds; i++)
         ptrs[i] = events[i].data.ptr;
-      return 0;
+
+      return nfds;
     }
   };
 }
