@@ -107,6 +107,10 @@ namespace verona::rt
     /// cleared before scheduler sleep, or in some stages of the LD protocol.
     ObjectMap<T*> mute_set;
 
+    // The set of poller cowns. These cowns are notified periodically to handle
+    // IO.
+    ObjectMap<Object*> pollers;
+
     T* get_token_cown()
     {
       assert(token_cown);
@@ -116,7 +120,8 @@ namespace verona::rt
     SchedulerThread()
     : token_cown{T::create_token_cown()},
       q{token_cown},
-      mute_set{ThreadAlloc::get()}
+      mute_set{ThreadAlloc::get()},
+      pollers{ThreadAlloc::get()}
     {
       token_cown->set_owning_thread(this);
     }
@@ -177,6 +182,15 @@ namespace verona::rt
         stats.unpause();
     }
 
+    void notify_pollers()
+    {
+      for (auto* it : pollers)
+      {
+        T* cown = (T*)it;
+        cown->mark_notify();
+      }
+    }
+
     void check_token_cown()
     {
       if (is_token_consumed())
@@ -196,6 +210,9 @@ namespace verona::rt
             << "Should steal for fairness!" << Systematic::endl;
           should_steal_for_fairness = true;
         }
+
+        // Poll for IO periodically
+        notify_pollers();
       }
     }
 
@@ -224,6 +241,18 @@ namespace verona::rt
         entry.key()->weak_release(alloc);
       }
       mute_set.clear(alloc);
+    }
+
+    void poller_add(Object* cown)
+    {
+      bool inserted = pollers.insert(alloc, cown).first;
+      if (inserted)
+        ((T*)cown)->weak_acquire();
+    }
+
+    void poller_remove(Object* cown)
+    {
+      pollers.erase(cown);
     }
 
     /**
@@ -479,6 +508,9 @@ namespace verona::rt
         // Participate in the cown LD protocol.
         ld_protocol();
 
+        // Notify the pollers if there's no work
+        notify_pollers();
+
         // Check if some other thread has pushed work on our queue.
         cown = q.dequeue(alloc);
 
@@ -502,6 +534,12 @@ namespace verona::rt
         // We were unable to steal, move to the next victim thread.
         victim = victim->next;
 
+        // Prevent pausing if there are active pollers in this thread
+        // TODO: Enable moving the responsibility for handling the pollers to
+        // another thread and pause
+        if (pollers.size() != 0)
+          continue;
+
         // Wait until a minimum timeout has passed.
         uint64_t tsc2 = Aal::tick();
 
@@ -521,6 +559,7 @@ namespace verona::rt
           mute_set_clear();
           continue;
         }
+
         // Enter sleep only when the queue doesn't contain any real cowns.
         else if (state == ThreadState::NotInLD && q.is_empty())
         {

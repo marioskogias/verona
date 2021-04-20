@@ -578,6 +578,19 @@ namespace verona::rt
       return get().active_thread_count == 0;
     }
 
+    void poller_add(Object* cown)
+    {
+      local()->poller_add(cown);
+    }
+
+    void poller_remove(Object* cown)
+    {
+      // TODO: removing a cown will require communication among scheduler
+      // threads
+      UNUSED(cown);
+      assert(0);
+    }
+
   private:
     inline ThreadState::State next_state(ThreadState::State s)
     {
