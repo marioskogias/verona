@@ -40,7 +40,6 @@ namespace verona::rt
   }
 
   static Behaviour unmute_behaviour{Behaviour::Descriptor::empty()};
-
   /**
    * A cown, or concurrent owner, encapsulates a set of resources that may be
    * accessed by a single (scheduler) thread at a time. A cown can only be in
@@ -131,6 +130,19 @@ namespace verona::rt
 
     std::atomic<BPState> bp_state{};
 
+    struct RemovePollerB: public VBehaviour<RemovePollerB>
+    {
+      Cown *c;
+
+      RemovePollerB(Cown *c_) : c(c_) {}
+
+      void f()
+      {
+        printf("Hello from my behaviour %lx\n", (unsigned long)c);
+        Scheduler::local()->poller_remove(c);
+      }
+    };
+
     static Cown* create_token_cown()
     {
       static constexpr Descriptor desc = {
@@ -140,6 +152,8 @@ namespace verona::rt
       auto o = Object::register_object(p, &desc);
       auto a = new (o) Cown(false);
 
+      a->queue.init(stub_msg(alloc));
+      a->wake();
       a->cown_mark_scanned();
       return a;
     }
@@ -370,6 +384,8 @@ namespace verona::rt
       // queue on send, or when rescheduling after a multi-message.
       CownThread* t = Scheduler::local();
 
+      if (Scheduler::local())
+        assert(this != Scheduler::local()->token_cown);
       if (t != nullptr)
       {
         t->schedule_fifo(this);
@@ -1364,6 +1380,12 @@ namespace verona::rt
       auto* body =
         MultiMessage::make_body(alloc, count, cowns, &unmute_behaviour);
       return MultiMessage::make_message(alloc, body, epoch);
+    }
+
+    void send_remove_poller_msg(Cown *c)
+    {
+      std::cout << "Send pollre remove msg\n";
+      schedule<RemovePollerB>(this, c);
     }
   };
 

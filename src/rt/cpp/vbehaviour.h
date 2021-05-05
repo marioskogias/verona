@@ -3,13 +3,13 @@
 #pragma once
 
 #include "../sched/behaviour.h"
-#include "../sched/cown.h"
 #include "type_traits"
 
 namespace verona::rt
 {
   using namespace snmalloc;
 
+  class Cown;
   /***
    * This class wraps a C++ implementation of a Verona closure ("when").
    *

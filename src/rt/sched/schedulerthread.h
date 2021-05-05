@@ -10,6 +10,7 @@
 #include "schedulerstats.h"
 #include "spmcq.h"
 #include "threadpool.h"
+#include "multimessage.h"
 
 #include <snmalloc.h>
 #include <thread>
@@ -213,6 +214,12 @@ namespace verona::rt
 
         // Poll for IO periodically
         notify_pollers();
+
+        // Run behaviours enqueued on the token cown
+        std::cout << "Will try to run the token_cown behaviours\n";
+        T::acquire(token_cown);
+        token_cown->run(alloc, state, send_epoch);
+        token_cown->wake();
       }
     }
 
@@ -250,8 +257,16 @@ namespace verona::rt
         ((T*)cown)->weak_acquire();
     }
 
+    void poller_remove_async(Object* cown)
+    {
+      std::cout << "poller remove async\n";
+      token_cown->send_remove_poller_msg((T*)cown);
+      //pollers.erase(cown);
+    }
+
     void poller_remove(Object* cown)
     {
+      std::cout << "poller remove\n";
       pollers.erase(cown);
     }
 

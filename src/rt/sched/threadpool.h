@@ -585,10 +585,13 @@ namespace verona::rt
 
     void poller_remove(Object* cown)
     {
-      // TODO: removing a cown will require communication among scheduler
-      // threads
-      UNUSED(cown);
-      assert(0);
+      T* t = first_thread;
+      do
+      {
+          // Send msg to the token cown
+          t->poller_remove_async(cown);
+          t = t->next;
+      } while (t != first_thread);
     }
 
   private:
