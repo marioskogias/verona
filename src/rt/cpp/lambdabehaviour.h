@@ -8,6 +8,12 @@ namespace verona::rt
 {
   using namespace snmalloc;
 
+  class EmptyCown : public rt::VCown<EmptyCown>
+  {
+  public:
+    EmptyCown() {}
+  };
+
   template<class T>
   class LambdaBehaviour : public Behaviour
   {
@@ -33,7 +39,6 @@ namespace verona::rt
 
       return &desc;
     }
-
   public:
     LambdaBehaviour(T fn_) : Behaviour(desc()), fn(fn_) {}
   };
@@ -41,6 +46,13 @@ namespace verona::rt
   template<typename T>
   static void scheduleLambda(Cown* c, T f)
   {
+    Cown::schedule<LambdaBehaviour<T>>(c, f);
+  }
+
+  template<typename T>
+  static void scheduleLambda(T f)
+  {
+    Cown *c = new EmptyCown();
     Cown::schedule<LambdaBehaviour<T>>(c, f);
   }
 } // namespace verona::rt
