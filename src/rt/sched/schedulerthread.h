@@ -216,7 +216,6 @@ namespace verona::rt
         notify_pollers();
 
         // Run behaviours enqueued on the token cown
-        std::cout << "Will try to run the token_cown behaviours\n";
         T::acquire(token_cown);
         token_cown->run(alloc, state, send_epoch);
         token_cown->wake();

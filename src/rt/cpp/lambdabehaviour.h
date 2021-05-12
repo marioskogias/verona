@@ -35,10 +35,22 @@ namespace verona::rt
 
     static const Behaviour::Descriptor* desc()
     {
-      static constexpr Behaviour::Descriptor desc = {sizeof(T), f, NULL};
+      static constexpr Behaviour::Descriptor desc = {sizeof(LambdaBehaviour<T>), f, NULL};
 
       return &desc;
     }
+
+    void* operator new(size_t, LambdaBehaviour* obj)
+    {
+      return obj;
+    }
+
+    void operator delete(void*, LambdaBehaviour*) {}
+
+    void* operator new(size_t) = delete;
+    void* operator new[](size_t size) = delete;
+    void operator delete[](void* p) = delete;
+    void operator delete[](void* p, size_t sz) = delete;
   public:
     LambdaBehaviour(T fn_) : Behaviour(desc()), fn(fn_) {}
   };
