@@ -10,6 +10,7 @@
 #include "cpp/vbehaviour.h"
 #include "cpp/vobject.h"
 #include "cpp/lambdabehaviour.h"
+#include "cpp/promise.h"
 #include "object/object.h"
 #include "region/externalreference.h"
 #include "region/freeze.h"
