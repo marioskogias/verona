@@ -66,5 +66,6 @@ namespace verona::rt
   {
     Cown *c = new EmptyCown();
     Cown::schedule<LambdaBehaviour<T>>(c, f);
+    Cown::release(ThreadAlloc::get(), c);
   }
 } // namespace verona::rt
